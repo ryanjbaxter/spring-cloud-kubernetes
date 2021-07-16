@@ -787,7 +787,7 @@ output. More generally speaking, changes associated to properties prefixed with 
 field of the `@ConfigurationProperties` annotation are detected and reflected in the application.
 <<configmap-propertysource,Associating a `ConfigMap` with a pod>> is explained earlier in this chapter.
 
-The full example is available in https://github.com/fabric8io/spring-cloud-kubernetes/tree/master/spring-cloud-kubernetes-examples/kubernetes-reload-example[`spring-cloud-kubernetes-reload-example`].
+The full example is available in https://github.com/spring-cloud/spring-cloud-kubernetes/tree/main/spring-cloud-kubernetes-examples/kubernetes-reload-example[`spring-cloud-kubernetes-reload-example`].
 
 The reload feature supports two operating modes:
 * Event (default): Watches for changes in config maps or secrets by using the Kubernetes API (web socket).
@@ -826,7 +826,9 @@ https://github.com/fabric8io/kubernetes-client[Fabric8 Kubernetes Java client], 
 communicate by using `http` protocol to the REST API of the Kubernetes Server.
 
 To disable the integration with Kubernetes you can set `spring.cloud.kubernetes.enabled` to `false`. Please be aware that when `spring-cloud-kubernetes-config` is on the classpath,
-`spring.cloud.kubernetes.enabled` should be set in `bootstrap.{properties|yml}` (or the profile specific one)  otherwise it should be in `application.{properties|yml}` (or the profile specific one).
+`spring.cloud.kubernetes.enabled` should be set in `bootstrap.{properties|yml}` (or the profile specific one),  otherwise it should be in `application.{properties|yml}` (or the profile specific one).
+Because of the way we set up a specific `EnvironmentPostProcessor` in `spring-cloud-kubernetes-config`, you also need to disable that processor via a system property (or an environment variable), for example you could start
+your application via `-DSPRING_CLOUD_KUBERNETES_ENABLED=false` (any form of relaxed binding will work too).
 Also note that these properties: `spring.cloud.kubernetes.config.enabled` and `spring.cloud.kubernetes.secrets.enabled` only take effect when set in `bootstrap.{properties|yml}`
 
 === Kubernetes Profile Autoconfiguration
@@ -933,6 +935,8 @@ spring.cloud.kubernetes.discovery.all-namespaces=true
 ----
 ====
 
+If a service needs to be accessed over HTTPS you need to add a label or annotation to your service definition with the name `secured` and the value `true` and the load balancer will then use HTTPS to make requests to the service.
+
 == Security Configurations Inside Kubernetes
 
 
@@ -990,7 +994,7 @@ metadata:
   namespace: YOUR-NAME-SPACE
   name: namespace-reader
 rules:
-  - apiGroups: ["", "extensions", "apps"]
+  - apiGroups: [""]
     resources: ["configmaps", "pods", "services", "endpoints", "secrets"]
     verbs: ["get", "list", "watch"]
 
@@ -1031,7 +1035,7 @@ actuator endpoint `/refresh` or via publishing a `RefreshRemoteApplicationEvent`
 To achieve this configuration refresh of a Spring Cloud app running on Kubernetes, you can deploy the Spring Cloud
 Kubernetes Configuration Watcher controller into your Kubernetes cluster.
 
-The application is published as a container and is available on https://hub.docker.com/repository/docker/springcloud/spring-cloud-kubernetes-configuration-watcher[Docker Hub].
+The application is published as a container and is available on https://hub.docker.com/r/springcloud/spring-cloud-kubernetes-configuration-watcher[Docker Hub].
 
 Spring Cloud Kubernetes Configuration Watcher can send refresh notifications to applications in two ways.
 

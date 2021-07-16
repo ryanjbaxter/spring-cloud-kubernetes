@@ -16,23 +16,17 @@
 
 package org.springframework.cloud.kubernetes.client;
 
-import java.io.IOException;
-
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 
-import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
-import org.springframework.boot.actuate.autoconfigure.info.ConditionalOnEnabledInfoContributor;
-import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.cloud.kubernetes.commons.ConditionalOnKubernetesEnabled;
-import org.springframework.cloud.kubernetes.commons.KubernetesClientProperties;
 import org.springframework.cloud.kubernetes.commons.KubernetesCommonsAutoConfiguration;
-import org.springframework.cloud.kubernetes.commons.PodUtils;
+import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
 import static org.springframework.cloud.kubernetes.client.KubernetesClientUtils.kubernetesApiClient;
 
@@ -46,7 +40,7 @@ public class KubernetesClientAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public ApiClient apiClient() throws IOException {
+	public ApiClient apiClient() {
 		ApiClient apiClient = kubernetesApiClient();
 		io.kubernetes.client.openapi.Configuration.setDefaultApiClient(apiClient);
 		return apiClient;
@@ -54,33 +48,21 @@ public class KubernetesClientAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public CoreV1Api coreApi(ApiClient apiClient) throws IOException {
+	public CoreV1Api coreApi(ApiClient apiClient) {
 		return new CoreV1Api(apiClient);
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public KubernetesClientPodUtils kubernetesPodUtils(CoreV1Api client,
-			KubernetesClientProperties kubernetesClientProperties) {
-		return new KubernetesClientPodUtils(client, kubernetesClientProperties.getNamespace());
+	public KubernetesNamespaceProvider kubernetesNamespaceProvider(Environment environment) {
+		return new KubernetesNamespaceProvider(environment);
 	}
 
-	@Configuration(proxyBeanMethods = false)
-	@ConditionalOnClass(HealthIndicator.class)
-	protected static class KubernetesActuatorConfiguration {
-
-		@Bean
-		@ConditionalOnEnabledHealthIndicator("kubernetes")
-		public KubernetesClientHealthIndicator kubernetesHealthIndicator(PodUtils podUtils) {
-			return new KubernetesClientHealthIndicator(podUtils);
-		}
-
-		@Bean
-		@ConditionalOnEnabledInfoContributor("kubernetes")
-		public KubernetesClientInfoContributor kubernetesInfoContributor(PodUtils podUtils) {
-			return new KubernetesClientInfoContributor(podUtils);
-		}
-
+	@Bean
+	@ConditionalOnMissingBean
+	public KubernetesClientPodUtils kubernetesPodUtils(CoreV1Api client,
+			KubernetesNamespaceProvider kubernetesNamespaceProvider) {
+		return new KubernetesClientPodUtils(client, kubernetesNamespaceProvider.getNamespace());
 	}
 
 }

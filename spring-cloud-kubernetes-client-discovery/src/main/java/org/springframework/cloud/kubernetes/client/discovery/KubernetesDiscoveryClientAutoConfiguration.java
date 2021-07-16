@@ -24,7 +24,6 @@ import io.kubernetes.client.openapi.models.V1Endpoints;
 import io.kubernetes.client.openapi.models.V1EndpointsList;
 import io.kubernetes.client.openapi.models.V1Service;
 import io.kubernetes.client.openapi.models.V1ServiceList;
-import io.kubernetes.client.spring.extended.controller.KubernetesInformerConfigurer;
 import io.kubernetes.client.spring.extended.controller.annotation.GroupVersionResource;
 import io.kubernetes.client.spring.extended.controller.annotation.KubernetesInformer;
 import io.kubernetes.client.spring.extended.controller.annotation.KubernetesInformers;
@@ -42,7 +41,7 @@ import org.springframework.cloud.client.ConditionalOnDiscoveryEnabled;
 import org.springframework.cloud.client.ConditionalOnDiscoveryHealthIndicatorEnabled;
 import org.springframework.cloud.client.discovery.simple.SimpleDiscoveryClientAutoConfiguration;
 import org.springframework.cloud.kubernetes.client.KubernetesClientAutoConfiguration;
-import org.springframework.cloud.kubernetes.commons.KubernetesClientProperties;
+import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.cloud.kubernetes.commons.PodUtils;
 import org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryClientHealthIndicatorInitializer;
 import org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryProperties;
@@ -80,9 +79,12 @@ public class KubernetesDiscoveryClientAutoConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean
-		public KubernetesInformerConfigurer discoveryInformerConfigurer(ApiClient apiClient,
+		public SpringCloudKubernetesInformerFactoryProcessor discoveryInformerConfigurer(
+				KubernetesNamespaceProvider kubernetesNamespaceProvider,
+				KubernetesDiscoveryProperties kubernetesDiscoveryProperties, ApiClient apiClient,
 				CatalogSharedInformerFactory sharedInformerFactory) {
-			return new KubernetesInformerConfigurer(apiClient, sharedInformerFactory);
+			return new SpringCloudKubernetesInformerFactoryProcessor(kubernetesDiscoveryProperties,
+					kubernetesNamespaceProvider, apiClient, sharedInformerFactory);
 		}
 
 		@Bean
@@ -94,11 +96,11 @@ public class KubernetesDiscoveryClientAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean
 		public KubernetesInformerDiscoveryClient kubernetesInformerDiscoveryClient(
-				KubernetesClientProperties kubernetesClientProperties,
+				KubernetesNamespaceProvider kubernetesNamespaceProvider,
 				CatalogSharedInformerFactory sharedInformerFactory, Lister<V1Service> serviceLister,
 				Lister<V1Endpoints> endpointsLister, SharedInformer<V1Service> serviceInformer,
 				SharedInformer<V1Endpoints> endpointsInformer, KubernetesDiscoveryProperties properties) {
-			return new KubernetesInformerDiscoveryClient(kubernetesClientProperties.getNamespace(),
+			return new KubernetesInformerDiscoveryClient(kubernetesNamespaceProvider.getNamespace(),
 					sharedInformerFactory, serviceLister, endpointsLister, serviceInformer, endpointsInformer,
 					properties);
 		}

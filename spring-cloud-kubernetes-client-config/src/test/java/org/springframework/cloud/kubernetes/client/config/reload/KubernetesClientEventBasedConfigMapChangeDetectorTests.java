@@ -44,7 +44,7 @@ import org.mockito.Mockito;
 
 import org.springframework.cloud.kubernetes.client.config.KubernetesClientConfigMapPropertySource;
 import org.springframework.cloud.kubernetes.client.config.KubernetesClientConfigMapPropertySourceLocator;
-import org.springframework.cloud.kubernetes.commons.KubernetesClientProperties;
+import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.cloud.kubernetes.commons.config.reload.ConfigReloadProperties;
 import org.springframework.cloud.kubernetes.commons.config.reload.ConfigurationUpdateStrategy;
 import org.springframework.mock.env.MockPropertySource;
@@ -88,7 +88,7 @@ class KubernetesClientEventBasedConfigMapChangeDetectorTests {
 	}
 
 	@Test
-	void watch() throws Exception {
+	void watch() {
 		Map<String, String> data = new HashMap<>();
 		data.put("application.properties", "spring.cloud.kubernetes.configuration.watcher.refreshDelay=0\n"
 				+ "logging.level.org.springframework.cloud.kubernetes=TRACE");
@@ -142,11 +142,11 @@ class KubernetesClientEventBasedConfigMapChangeDetectorTests {
 				mock(KubernetesClientConfigMapPropertySource.class)).withProperty("debug", "true");
 		KubernetesClientConfigMapPropertySourceLocator locator = mock(
 				KubernetesClientConfigMapPropertySourceLocator.class);
-		when(locator.locate(environment)).thenReturn(new MockPropertySource().withProperty("debug", "false"));
-		KubernetesClientProperties kubernetesClientProperties = new KubernetesClientProperties();
-		kubernetesClientProperties.setNamespace("default");
+		when(locator.locate(environment)).thenAnswer(x -> new MockPropertySource().withProperty("debug", "false"));
+		KubernetesNamespaceProvider kubernetesNamespaceProvider = mock(KubernetesNamespaceProvider.class);
+		when(kubernetesNamespaceProvider.getNamespace()).thenReturn("default");
 		KubernetesClientEventBasedConfigMapChangeDetector changeDetector = new KubernetesClientEventBasedConfigMapChangeDetector(
-				coreV1Api, environment, new ConfigReloadProperties(), strategy, locator, kubernetesClientProperties);
+				coreV1Api, environment, new ConfigReloadProperties(), strategy, locator, kubernetesNamespaceProvider);
 
 		Thread controllerThread = new Thread(changeDetector::watch);
 		controllerThread.setDaemon(true);

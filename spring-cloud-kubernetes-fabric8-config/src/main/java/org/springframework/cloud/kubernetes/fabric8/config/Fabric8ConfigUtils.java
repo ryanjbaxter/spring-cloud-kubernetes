@@ -36,13 +36,17 @@ public final class Fabric8ConfigUtils {
 
 	public static String getApplicationNamespace(KubernetesClient client, String configNamespace,
 			String configurationTarget) {
-		if (StringUtils.isEmpty(configNamespace)) {
+		if (!StringUtils.hasLength(configNamespace)) {
 			LOG.debug(configurationTarget + " namespace has not been set, taking it from client (ns="
 					+ client.getNamespace() + ")");
 			configNamespace = client.getNamespace();
 		}
 
 		return configNamespace;
+	}
+
+	static String getNamespace(KubernetesClient client, String namespace) {
+		return !StringUtils.hasLength(namespace) ? client.getNamespace() : namespace;
 	}
 
 }

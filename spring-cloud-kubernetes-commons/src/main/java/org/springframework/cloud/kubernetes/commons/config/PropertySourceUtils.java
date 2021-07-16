@@ -18,6 +18,7 @@ package org.springframework.cloud.kubernetes.commons.config;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BinaryOperator;
@@ -33,6 +34,8 @@ import org.springframework.util.StringUtils;
 import static org.springframework.beans.factory.config.YamlProcessor.MatchStatus.ABSTAIN;
 import static org.springframework.beans.factory.config.YamlProcessor.MatchStatus.FOUND;
 import static org.springframework.beans.factory.config.YamlProcessor.MatchStatus.NOT_FOUND;
+import static org.springframework.cloud.kubernetes.commons.config.Constants.SPRING_CONFIG_ACTIVATE_ON_PROFILE;
+import static org.springframework.cloud.kubernetes.commons.config.Constants.SPRING_PROFILES;
 
 /**
  * Utility class to work with property sources.
@@ -41,6 +44,10 @@ import static org.springframework.beans.factory.config.YamlProcessor.MatchStatus
  * @author Michael Moudatsos
  */
 public final class PropertySourceUtils {
+
+	private PropertySourceUtils() {
+		throw new IllegalStateException("Can't instantiate a utility class");
+	}
 
 	/**
 	 * Function to convert a String to Properties.
@@ -52,7 +59,7 @@ public final class PropertySourceUtils {
 			return properties;
 		}
 		catch (IOException e) {
-			throw new IllegalArgumentException();
+			throw new UncheckedIOException(e);
 		}
 	};
 
@@ -60,12 +67,7 @@ public final class PropertySourceUtils {
 	 * Function to convert Properties to a Map.
 	 */
 	public static final Function<Properties, Map<String, Object>> PROPERTIES_TO_MAP = p -> p.entrySet().stream()
-			.collect(Collectors.toMap(e -> String.valueOf(e.getKey()), Map.Entry::getValue, throwingMerger(),
-					java.util.LinkedHashMap::new));
-
-	private PropertySourceUtils() {
-		throw new IllegalStateException("Can't instantiate a utility class");
-	}
+			.collect(Collectors.toMap(e -> e.getKey().toString(), Map.Entry::getValue));
 
 	/**
 	 * Function to convert String into Properties with an environment.
@@ -76,13 +78,23 @@ public final class PropertySourceUtils {
 		return s -> {
 			YamlPropertiesFactoryBean yamlFactory = new YamlPropertiesFactoryBean();
 			yamlFactory.setDocumentMatchers(properties -> {
-				String profiles = properties.getProperty("spring.profiles");
-				if (environment != null && StringUtils.hasText(profiles)) {
-					return environment.acceptsProfiles(Profiles.of(profiles)) ? FOUND : NOT_FOUND;
+				if (environment != null) {
+					String profiles = null;
+					String activeOnProfile = properties.getProperty(SPRING_CONFIG_ACTIVATE_ON_PROFILE);
+					String springProfiles = properties.getProperty(SPRING_PROFILES);
+
+					if (activeOnProfile != null) {
+						profiles = activeOnProfile;
+					}
+					else if (springProfiles != null) {
+						profiles = springProfiles;
+					}
+
+					if (StringUtils.hasText(profiles)) {
+						return environment.acceptsProfiles(Profiles.of(profiles)) ? FOUND : NOT_FOUND;
+					}
 				}
-				else {
-					return ABSTAIN;
-				}
+				return ABSTAIN;
 			});
 			yamlFactory.setResources(new ByteArrayResource(s.getBytes()));
 			return yamlFactory.getObject();
@@ -90,13 +102,14 @@ public final class PropertySourceUtils {
 	}
 
 	/**
-	 * Throws IllegalStateException.
-	 * @param <T> Throwable.
-	 * @return IllegalStateException.
+	 * returns a {@link BinaryOperator} that unconditionally throws an
+	 * {@link IllegalStateException}.
+	 * @param <T> type of the argument
+	 * @return a {@link BinaryOperator}
 	 */
 	public static <T> BinaryOperator<T> throwingMerger() {
-		return (u, v) -> {
-			throw new IllegalStateException(String.format("Duplicate key %s", u));
+		return (left, right) -> {
+			throw new IllegalStateException("Duplicate key " + left);
 		};
 	}
 
